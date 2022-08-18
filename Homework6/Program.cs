@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.Linq;
 
 namespace Homework6
 {
@@ -6,113 +7,137 @@ namespace Homework6
     {
         static void Main(string[] args)
         {
-            // by default file does not exist
-            // to create file - create first note (to input new data press 2)
-            // if file exists but is empty - the program will report
-            // to close program press 3
-
+            // the path to file
             string path = @"staff.txt";
+
+            // check if file does not exist create & add a first note
+            if (!File.Exists(path))
+            {
+                Console.WriteLine("file is empty , add a first note :");
+                using (StreamWriter sw = new StreamWriter(path))
+                {
+                    string note = string.Empty;
+                    string[] n = NewWorker();
+                    char c = '#';
+                    note += 1; // id
+                    note += c + n[0]; // date & time
+                    note += c + n[1]; // full name
+                    note += c + n[2]; // age
+                    note += c + n[3]; // height
+                    note += c + n[4]; // date of birth
+                    note += c + n[5]; // place of birth
+
+                    sw.WriteLine(note);
+                }
+            // loading data from not empty file
+            Repository repository = new Repository(path);
+            // program menu
             int a;
             do
             {
                 Console.WriteLine("to output data on the screen press 1" +
                     "\nto input new data press 2" +
-                    "\nto exit press 3");
+                    "\nto delete a note press 3" +
+                    "\nto edit a note press 4" +
+                    "\nto get notes between two dates press 5" +
+                    "\nto sort notes by field press 6" +
+                    "\nto generate a list of workers press 7" +
+                    "\nto exit press 8");
                 a = int.Parse(Console.ReadLine());
 
                 switch (a)
                 {
-                    case 1: OutputData(path); break;
-                    case 2: InputData(path); break;
+                    case 1: repository.PrintToConsole(); break;
+
+                    case 2: string[] stats = NewWorker();
+                            repository.Add(true, new Worker(repository.Count + 1,
+                                                            stats[0],
+                                                            stats[1],
+                                                            ushort.Parse(stats[2]),
+                                                            ushort.Parse(stats[3]),
+                                                            stats[4],
+                                                            stats[5])); break;
+
+                    case 3: Console.WriteLine("enter note's id to delete :");
+                            repository.Delete(int.Parse(Console.ReadLine())); break;
+
+                    case 4: Console.WriteLine("enter note's id to edit :");
+                            int id = int.Parse(Console.ReadLine());
+                            string[] stts = NewWorker();
+                            repository.Edit(id, new Worker(id,
+                                                           stts[0],
+                                                           stts[1],
+                                                           ushort.Parse(stts[2]),
+                                                           ushort.Parse(stts[3]),
+                                                           stts[4],
+                                                           stts[5])); break;
+
+                    case 5: Console.WriteLine("enter date from (dd.mm.yyyy hh:mm format) :");
+                            DateTime from = DateTime.ParseExact(Console.ReadLine(), "g", null);
+                            Console.WriteLine("enter date to (dd.mm.yyyy hh:mm format) :");
+                            DateTime to = DateTime.ParseExact(Console.ReadLine(), "g", null);
+                            repository.GetWorkersBetweenTwoDates(from, to); break;
+
+                    case 6: Console.WriteLine("choose the option :" +
+                                              "\nto order by name press 0" +
+                                              "\nto order by age press 1" +
+                                              "\nto order by height press 2" +
+                                              "\nto order by date of birth press 3" +
+                                              "\nto order by hometown press 4");
+                            int k = int.Parse(Console.ReadLine());
+                            OrderWorkersBy(k, repository.Workers); break;
+
+                    case 7: Console.WriteLine("enter a number of workers you want to generate :"); 
+                            int count = int.Parse(Console.ReadLine()); 
+                            repository.GenerateWorkers(count); break;
+
                     default: break;
                 }
-            } while (a != 3);            
+            } while (a != 8);            
         }
-        public static void InputData(string path)
+        // method to enter worker fields 
+        // returns string array
+        public static string[] NewWorker()
         {
-            
-            string c = "#";
-            if (!File.Exists(path))
-            {
-                using (StreamWriter sw = new StreamWriter(path))
-                {
-                    string note = string.Empty;
-                    note += c + 1; // id
-                    note += c + DateTime.Now.ToString("dd.MM.yyyy HH.mm"); // date & time
-                    note += c + Console.ReadLine(); // full name
-                    note += c + Console.ReadLine(); // age
-                    note += c + Console.ReadLine(); // height
-                    note += c + Console.ReadLine(); // date of birth
-                    note += c + Console.ReadLine(); // place of birth
+            string[] str = new string[6];
+            str[0] = DateTime.Now.ToString("g");
+            Console.WriteLine("enter the full name :");
+            str[1] = Console.ReadLine();
+            Console.WriteLine("enter the age :");
+            str[2] = Console.ReadLine();
+            Console.WriteLine("enter the height :");
+            str[3] = Console.ReadLine();
+            Console.WriteLine("enter the date of birth (dd.mm.yyyy format) :");
+            str[4] = Console.ReadLine();
+            Console.WriteLine("enter the hometown :");
+            str[5] = Console.ReadLine();
 
-                    sw.WriteLine(note);
-                }
-                return;
-            }
-
-            int id = 1;
-            StreamReader sr = new StreamReader(path);
-            if (!String.IsNullOrWhiteSpace(sr.ReadLine()) || !String.IsNullOrEmpty(sr.ReadLine()))
-            {
-                do id++;
-                while (sr.ReadLine() != null);
-                sr.Close();
-            }
-            else
-            {
-                sr.Close();
-                File.Delete(path);
-                InputData(path);
-                return;
-            }
-
-            using (StreamWriter sw = File.AppendText(path))
-            {
-                string note = string.Empty;
-
-                note += c + id; // id
-                note += c + DateTime.Now.ToString("dd.MM.yyyy HH.mm"); // date & time
-                note += c + Console.ReadLine(); // full name
-                note += c + Console.ReadLine(); // age
-                note += c + Console.ReadLine(); // height
-                note += c + Console.ReadLine(); // date of birth
-                note += c + Console.ReadLine(); // place of birth
-
-                sw.WriteLine(note);
-
-            }
+            return str;
         }
-        
-        public static void OutputData(string path)
+        // method to order workers by choosen field
+        // outputs on the screen ordered list
+        public static void OrderWorkersBy(int option, Worker[] workers)
         {
-            if (!File.Exists(path))
+            Worker[] orderedWorkers = workers;
+            IEnumerable<Worker> query;
+            switch (option)
             {
-                Console.WriteLine("file does not exist !");
-                return;
+                case 0: query = orderedWorkers.OrderBy(w => w.FullName); break;
+                case 1: query = orderedWorkers.OrderBy(w => w.Age); break;
+                case 2: query = orderedWorkers.OrderBy(w => w.Height); break;
+                case 3: query = orderedWorkers.OrderBy(w => w.DateOfBirth); break;
+                case 4: query = orderedWorkers.OrderBy(w => w.HomeTown); break;
+                default: Console.WriteLine("wrong option !"); return; break;
             }
-            using (StreamReader sr = new StreamReader(path))
-            {
-                string line;
-                int i = 0;
-                while ((line = sr.ReadLine()) != null)
-                {
-                    string[] data = line.Split("#");
-                    if (data.Length <= 1 && i == 0)
-                    {
-                        Console.WriteLine("file is empty");
-                        break;
-                    }
-                    Console.WriteLine("{0} {1} {2} {3} {4} {5} {6}",
-                        data[1],
-                        data[2],
-                        data[3],
-                        data[4],
-                        data[5],
-                        data[6],
-                        data[7]);
-                    i++;
-                }
-            }
+            foreach (Worker w in query) 
+                Console.WriteLine("{0, 3} {1, 20} {2, 25} {3, 4} {4, 5} {5, 15} {6, 10}",
+                                            w.Id,
+                                            w.RegTime.ToString("g"),
+                                            w.FullName,
+                                            w.Age,
+                                            w.Height,
+                                            w.DateOfBirth.ToString("d"),
+                                            w.HomeTown);
         }
     }
 }
